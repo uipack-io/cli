@@ -5,10 +5,15 @@ import (
 	"strings"
 )
 
-type VariableType uint8
+type MainValueType uint8
+
+type ValueType struct {
+	Type       MainValueType
+	CustomType CustomTypeIdentifier
+}
 
 const (
-	DeprecatedType VariableType = iota
+	DeprecatedType MainValueType = iota
 	ColorType
 	TextStyleType
 	LinearGradientType
@@ -21,10 +26,10 @@ const (
 	OffsetType
 	RadiusType
 	BorderRadiusType
-	InstanceType
+	CustomType
 )
 
-func FindVariableType(o interface{}) VariableType {
+func FindVariableType(o interface{}) MainValueType {
 	switch o.(type) {
 	case Color:
 		return ColorType
@@ -51,7 +56,7 @@ func FindVariableType(o interface{}) VariableType {
 	case BorderRadius:
 		return BorderRadiusType
 	case Instance:
-		return InstanceType
+		return CustomType
 	default:
 		return DeprecatedType
 	}
@@ -63,6 +68,15 @@ type BundleMetadata struct {
 	Modes     []ModeMetadata     // The modes of the bundle. Maximum 16 modes.
 	Variables []VariableMetadata // The variables of the bundle.
 	Types     []TypeDefinition   // The custom type definitions
+}
+
+func (b *BundleMetadata) FindTypeDefintion(identifier CustomTypeIdentifier) *TypeDefinition {
+	for _, t := range b.Types {
+		if t.Identifier == identifier {
+			return &t
+		}
+	}
+	return nil
 }
 
 func (b *BundleMetadata) GenerateModeCombinations() [][]ModeVariantMetadata {
@@ -96,9 +110,9 @@ type ModeVariantMetadata struct {
 }
 
 type VariableMetadata struct {
-	Identifier uint64       // Unique identifier, also the index of the variable.
-	Type       VariableType // Type of the variable.
-	Name       string       // Name of the variables.
+	Identifier uint64    // Unique identifier, also the index of the variable.
+	Type       ValueType // Type of the variable.
+	Name       string    // Name of the variables.
 }
 
 // Creates a tree of the variables in the bundle by grouping them by following the path in the variable name.
@@ -164,85 +178,207 @@ type VariableCollectionVariable struct {
 
 // Binary encoding
 
-func (mv *ModeVariantMetadata) Decode(r *bufio.Reader) {
-	mv.Name = readString(r)
+func (mv *ModeVariantMetadata) Decode(r *bufio.Reader) error {
+	var err error
+	mv.Name, err = readString(r)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (mv *ModeVariantMetadata) Encode(r *bufio.Writer) {
-	writeString(r, mv.Name)
+func (mv *ModeVariantMetadata) Encode(r *bufio.Writer) error {
+	err := writeString(r, mv.Name)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (b *BundleMetadata) Decode(r *bufio.Reader) {
-	protocol := readUint16(r)
+func (b *BundleMetadata) Decode(r *bufio.Reader) error {
+	var err error
+	protocol, err := readUint16(r)
+	if err != nil {
+		return err
+	}
 	if protocol != PROTOCOL_VERSION {
 		panic("Unsupported protocol version")
 	}
-	b.Version.Decode(r)
-	b.Name = readString(r)
-	modesCount := readUint8(r)
+	err = b.Version.Decode(r)
+	if err != nil {
+		return err
+	}
+	b.Name, err = readString(r)
+	if err != nil {
+		return err
+	}
+	modesCount, err := readUint8(r)
+	if err != nil {
+		return err
+	}
 	modes := make([]ModeMetadata, modesCount)
 	for i := uint8(0); i < modesCount; i++ {
 		mode := ModeMetadata{
 			Identifier: Uint4(i),
 		}
-		mode.Decode(r)
+		err = mode.Decode(r)
+		if err != nil {
+			return err
+		}
 		modes[i] = mode
 	}
 	b.Modes = modes
-	variablesCount := readUint64(r)
+	variablesCount, err := readUint64(r)
+	if err != nil {
+		return err
+	}
 	variables := make([]VariableMetadata, variablesCount)
 	for i := uint64(0); i < variablesCount; i++ {
 		variable := VariableMetadata{
 			Identifier: i,
 		}
-		variable.Decode(r)
+		err = variable.Decode(r)
+		if err != nil {
+			return err
+		}
 		variables[i] = variable
 	}
 	b.Variables = variables
+	return nil
 }
 
-func (b *BundleMetadata) Encode(r *bufio.Writer) {
-	writeUint16(r, PROTOCOL_VERSION)
-	b.Version.Encode(r)
-	writeString(r, b.Name)
-	writeUint8(r, uint8(len(b.Modes)))
+func (b *BundleMetadata) Encode(r *bufio.Writer) error {
+	err := writeUint16(r, PROTOCOL_VERSION)
+	if err != nil {
+		return err
+	}
+	err = b.Version.Encode(r)
+	if err != nil {
+		return err
+	}
+	err = writeString(r, b.Name)
+	if err != nil {
+		return err
+	}
+	err = writeUint8(r, uint8(len(b.Modes)))
+	if err != nil {
+		return err
+	}
 	for _, mode := range b.Modes {
-		mode.Encode(r)
+		err = mode.Encode(r)
+		if err != nil {
+			return err
+		}
 	}
-	writeUint64(r, uint64(len(b.Variables)))
+	err = writeUint64(r, uint64(len(b.Variables)))
+	if err != nil {
+		return err
+	}
 	for _, variable := range b.Variables {
-		variable.Encode(r)
+		err = variable.Encode(r)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (m *ModeMetadata) Decode(r *bufio.Reader) {
-	m.Name = readString(r)
-	uipackCount := readUint8(r)
+func (m *ModeMetadata) Decode(r *bufio.Reader) error {
+	var err error
+	m.Name, err = readString(r)
+	if err != nil {
+		return err
+	}
+	uipackCount, err := readUint8(r)
+	if err != nil {
+		return err
+	}
 	variations := make([]ModeVariantMetadata, uipackCount)
 	for i := uint8(0); i < uipackCount; i++ {
 		variant := ModeVariantMetadata{
 			Identifier: Uint4(i),
 		}
-		variant.Decode(r)
+		err = variant.Decode(r)
+		if err != nil {
+			return err
+		}
 		variations[i] = variant
 	}
 	m.Variants = variations
+	return nil
 }
 
-func (m *ModeMetadata) Encode(r *bufio.Writer) {
-	writeString(r, m.Name)
-	writeUint8(r, uint8(len(m.Variants)))
-	for _, variant := range m.Variants {
-		variant.Encode(r)
+func (m *ModeMetadata) Encode(r *bufio.Writer) error {
+	err := writeString(r, m.Name)
+	if err != nil {
+		return err
 	}
+	err = writeUint8(r, uint8(len(m.Variants)))
+	if err != nil {
+		return err
+	}
+	for _, variant := range m.Variants {
+		err = variant.Encode(r)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (v *VariableMetadata) Decode(r *bufio.Reader) {
-	v.Type = VariableType(readUint8(r))
-	v.Name = readString(r)
+func (v *VariableMetadata) Decode(r *bufio.Reader) error {
+	mtype := ValueType{}
+	err := mtype.Decode(r)
+	if err != nil {
+		return err
+	}
+	v.Type = mtype
+	v.Name, err = readString(r)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (v *VariableMetadata) Encode(r *bufio.Writer) {
-	writeUint8(r, uint8(v.Type))
-	writeString(r, v.Name)
+func (v *VariableMetadata) Encode(r *bufio.Writer) error {
+	err := v.Type.Encode(r)
+	if err != nil {
+		return err
+	}
+	err = writeString(r, v.Name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (v *ValueType) Decode(r *bufio.Reader) error {
+	var err error
+	t, err := readUint8(r)
+	if err != nil {
+		return err
+	}
+	v.Type = MainValueType(t)
+	if v.Type == CustomType {
+		ct, err := readUint32(r)
+		if err != nil {
+			return err
+		}
+		v.CustomType = CustomTypeIdentifier(ct)
+	}
+	return nil
+}
+
+func (v *ValueType) Encode(r *bufio.Writer) error {
+	err := writeUint8(r, uint8(v.Type))
+	if err != nil {
+		return err
+	}
+	if v.Type == CustomType {
+		err = writeUint32(r, uint32(v.CustomType))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

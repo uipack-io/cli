@@ -23,28 +23,44 @@ func (color *Color) ToHexString() string {
 
 // Binary encoding
 
-func (color *Color) Encode(writer *bufio.Writer) {
+func (color *Color) Encode(writer *bufio.Writer) error {
 	err := writer.WriteByte(byte(color.Red))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = writer.WriteByte(byte(color.Green))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = writer.WriteByte(byte(color.Blue))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	err = writer.WriteByte(byte(color.Alpha))
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
-func (color *Color) Decode(reader *bufio.Reader) {
-	color.Red = readUint8(reader)
-	color.Green = readUint8(reader)
-	color.Blue = readUint8(reader)
-	color.Alpha = readUint8(reader)
+func (color *Color) Decode(reader *bufio.Reader) error {
+	var err error
+	color.Red, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	color.Green, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	color.Blue, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	color.Alpha, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	return nil
 }

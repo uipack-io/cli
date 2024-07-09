@@ -47,6 +47,26 @@ func (g *FlutterCodeGen) generateModeEnumDefinition(mode *uipack.ModeMetadata) {
 	g.Builder.WriteString("}\n")
 }
 
+func (g *FlutterCodeGen) generateCustomTypeDefinitions(metadata *uipack.BundleMetadata) {
+	for _, typedef := range metadata.Types {
+		g.Builder.WriteString(fmt.Sprintf("class %s {\n", dartType(typedef.Name)))
+
+		g.Builder.WriteString(fmt.Sprintf("const %s({\n", dartType(typedef.Name)))
+		for _, v := range typedef.Properties {
+			g.Builder.WriteString(fmt.Sprintf("this.%s,\n", dartField(v.Name)))
+		}
+
+		g.Builder.WriteString("});\n")
+
+		for _, v := range typedef.Properties {
+			t := generateDartType(metadata, v.Type)
+			g.Builder.WriteString(fmt.Sprintf("final %s %s;\n", t, dartField(v.Name)))
+
+		}
+		g.Builder.WriteString("}\n\n")
+	}
+}
+
 func (g *FlutterCodeGen) generateVariantTypeDefinition(metadata *uipack.BundleMetadata, bundles *[]uipack.Bundle) {
 	g.Builder.WriteString("typedef Variant = ({")
 	for _, mode := range metadata.Modes {
@@ -86,6 +106,9 @@ func (g *FlutterCodeGen) generateVariantTypeDefinition(metadata *uipack.BundleMe
 	g.Builder.WriteString("}")
 
 	g.Builder.WriteString("}")
+
+	// Custom types
+	g.generateCustomTypeDefinitions(metadata)
 }
 
 func (g *FlutterCodeGen) generateBundleExtension(metadata *uipack.BundleMetadata) {
@@ -113,7 +136,7 @@ func (g *FlutterCodeGen) generateBundleDataTypeDefinition(metadata *uipack.Bundl
 	collections := metadata.BuildTree()
 	g.Builder.WriteString("typedef Bundle = ({\n")
 	g.Builder.WriteString("\tint identifier,\n")
-	g.generateBundleVariableCollectionTypeDefinition(collections)
+	g.generateBundleVariableCollectionTypeDefinition(metadata, collections)
 	g.Builder.WriteString("});")
 }
 
@@ -124,7 +147,7 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
 	g.Builder.WriteString(`class BundleLoader {
   const BundleLoader(this.d);
   final ByteData d;
-  Bundle load(ByteData data) {
+  Bundle load() {
     var o = 0;
     T read<T>(T Function(int offset) f, int size) {
       final result = f(o);
@@ -141,7 +164,7 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
       final offset = o;
       o += l;
       return String.fromCharCodes(
-        data.buffer.asUint8List(offset, l),
+        d.buffer.asUint8List(offset, l),
       );
     }`)
 	g.Builder.WriteString(`Color color() => Color(uint32());`)
@@ -163,20 +186,90 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
           wordSpacing: float64(),
           height: float64(),
         );`)
+	g.Builder.WriteString(`LinearGradient linearGradient() => LinearGradient(
+          begin: Alignment(float64(), float64()),
+          end: Alignment(float64(), float64()),
+          colors: List.generate(
+            uint32(),
+            (_) => color(),
+          ),
+          stops: List.generate(
+            uint32(),
+            (_) => float64(),
+          ),
+        );`)
+	g.Builder.WriteString(`RadialGradient radialGradient() => RadialGradient(
+		  center: Alignment(float64(), float64()),
+		  radius: float64(),
+		  colors: List.generate(
+			uint32(),
+			(_) => color(),
+		  ),
+		  stops: List.generate(
+			uint32(),
+			(_) => float64(),
+		  ),	
+		);`)
+	g.Builder.WriteString(`Offset offset() => Offset(float64(), float64());`)
+	g.Builder.WriteString(`Radius radius() => Radius.circular(float64(), float64());`)
+	g.Builder.WriteString(`BorderRadius borderRadius() => BorderRadius.only(
+		  topLeft: radius(),
+		  topRight: radius(),
+		  bottomLeft: radius(),
+		  bottomRight: radius(),
+		);`)
+
+	getMethod := func(v uipack.ValueType) string {
+		switch v.Type {
+		case uipack.ColorType:
+			return "color()"
+		case uipack.TextStyleType:
+			return "textStyle()"
+		case uipack.LinearGradientType:
+			return "linearGradient()"
+		case uipack.RadialGradientType:
+			return "radialGradient()"
+		case uipack.StringType:
+			return "string()"
+		case uipack.BooleanType:
+			return "uint8() == 1"
+		case uipack.FloatType:
+			return "float64()"
+		case uipack.IntegerType:
+			return "uint64()"
+		case uipack.OffsetType:
+			return "offset()"
+		case uipack.RadiusType:
+			return "radius`()"
+		case uipack.BorderRadiusType:
+			return "borderRadius()"
+		case uipack.LabelType:
+			return "label()"
+		case uipack.CustomType:
+			return "instance()"
+		}
+		return ""
+	}
+
+	g.Builder.WriteString(`Object instance() {
+			switch(uint64()) {`)
+
+	for _, typedef := range metadata.Types {
+		g.Builder.WriteString(fmt.Sprintf("case 0x%x: return %s(", typedef.Identifier, dartType(typedef.Name)))
+		for _, v := range typedef.Properties {
+			g.Builder.WriteString(fmt.Sprintf("%s: %s,", dartField(v.Name), getMethod(v.Type)))
+		}
+		g.Builder.WriteString(");")
+	}
+	g.Builder.WriteString(`
+			_ => throw Exception('Unknown instance type');
+		  }
+		}`)
 	g.Builder.WriteString("final values = <dynamic>[\n")
 	g.Builder.WriteString("uint64(), // Identifier\n")
 
 	for _, v := range metadata.Variables {
-		switch v.Type {
-		case uipack.ColorType:
-			g.Builder.WriteString("color(),")
-		case uipack.TextStyleType:
-			g.Builder.WriteString("textStyle(),")
-		case uipack.LinearGradientType:
-			g.Builder.WriteString("linearGradient(),")
-		case uipack.RadialGradientType:
-			g.Builder.WriteString("radialGradient(),")
-		}
+		g.Builder.WriteString(getMethod(v.Type))
 		g.Builder.WriteString(fmt.Sprintf("//%s\n", v.Name))
 
 	}
@@ -209,16 +302,16 @@ func (g *FlutterCodeGen) generateBundleLoaderCollectionInstance(collection uipac
 	}
 }
 
-func (g *FlutterCodeGen) generateBundleVariableCollectionTypeDefinition(collection uipack.VariableCollection) {
+func (g *FlutterCodeGen) generateBundleVariableCollectionTypeDefinition(metadata *uipack.BundleMetadata, collection uipack.VariableCollection) {
 
 	for _, v := range collection.Variables {
-		g.generateBundleVariantVariableDefinition(&v)
+		g.generateBundleVariantVariableDefinition(metadata, &v)
 		g.Builder.WriteString(",\n")
 	}
 
 	for _, c := range collection.Collections {
 		g.Builder.WriteString("({\n")
-		g.generateBundleVariableCollectionTypeDefinition(c)
+		g.generateBundleVariableCollectionTypeDefinition(metadata, c)
 		g.Builder.WriteString("})")
 		g.Builder.WriteString(" ")
 		g.Builder.WriteString(dartField(c.Name))
@@ -227,13 +320,39 @@ func (g *FlutterCodeGen) generateBundleVariableCollectionTypeDefinition(collecti
 
 }
 
-func (g *FlutterCodeGen) generateBundleVariantVariableDefinition(v *uipack.VariableCollectionVariable) {
-	switch v.Variable.Type {
+func generateDartType(metadata *uipack.BundleMetadata, t uipack.ValueType) string {
+	switch t.Type {
 	case uipack.ColorType:
-		g.Builder.WriteString("Color")
+		return "Color"
 	case uipack.TextStyleType:
-		g.Builder.WriteString("TextStyle")
+		return "TextStyle"
+	case uipack.LinearGradientType:
+		return "LinearGradient"
+	case uipack.RadialGradientType:
+		return "RadialGradient"
+	case uipack.StringType:
+		return "String"
+	case uipack.BooleanType:
+		return "bool"
+	case uipack.FloatType:
+		return "double"
+	case uipack.IntegerType:
+		return "int"
+	case uipack.OffsetType:
+		return "Offset"
+	case uipack.RadiusType:
+		return "Radius"
+	case uipack.BorderRadiusType:
+		return "BorderRadius"
+	case uipack.CustomType:
+		typedef := metadata.FindTypeDefintion(t.CustomType)
+		return dartType(typedef.Name)
 	}
+	return ""
+}
+
+func (g *FlutterCodeGen) generateBundleVariantVariableDefinition(metadata *uipack.BundleMetadata, v *uipack.VariableCollectionVariable) {
+	g.Builder.WriteString(generateDartType(metadata, v.Variable.Type))
 	g.Builder.WriteString(" ")
 	g.Builder.WriteString(dartField(v.Name))
 }
@@ -314,7 +433,7 @@ func (g *FlutterCodeGen) generateBundleVariableInstance(v interface{}) {
 		}
 
 		g.Builder.WriteString("TextStyle(")
-		g.Builder.WriteString(fmt.Sprintf("fontFamily: '%s',", fontFamily))
+		g.Builder.WriteString(fmt.Sprintf("fontFamily: %s,", dartStringLiteral(fontFamily)))
 		g.Builder.WriteString(fmt.Sprintf("fontSize: %.2f,", v.FontSize))
 		g.Builder.WriteString(fmt.Sprintf("letterSpacing: %.2f,", v.LetterSpacing))
 		g.Builder.WriteString(fmt.Sprintf("fontWeight: %s,", generateFlutterFontWeight(v.FontWeight)))
@@ -346,7 +465,54 @@ func (g *FlutterCodeGen) generateBundleVariableInstance(v interface{}) {
 		g.Builder.WriteString(fmt.Sprintf("%.2f", v.Radius))
 		generateGradientStops(v.Stops)
 		g.Builder.WriteString(")")
+	case uipack.Offset:
+		if v.X == 0 && v.Y == 0 {
+			g.Builder.WriteString("Offset.zero")
+		} else {
+			g.Builder.WriteString(fmt.Sprintf("Offset(%f, %f)", v.X, v.Y))
+		}
+	case uipack.Radius:
+		if v.X == v.Y {
+			if v.X == 0 {
+				g.Builder.WriteString("Radius.zero")
+			} else {
+				g.Builder.WriteString(fmt.Sprintf("Radius.circular(%f)", v.X))
+			}
+		} else {
+			g.Builder.WriteString(fmt.Sprintf("Radius.elliptical(%f, %f)", v.X, v.Y))
+		}
+	case uipack.BorderRadius:
+		g.Builder.WriteString("BorderRadius.only(")
 
+		g.Builder.WriteString("topLeft:")
+		g.generateBundleVariableInstance(v.TopLeft)
+		g.Builder.WriteString(",")
+
+		g.Builder.WriteString("topRight:")
+		g.generateBundleVariableInstance(v.TopRight)
+		g.Builder.WriteString(",")
+
+		g.Builder.WriteString("bottomLeft:")
+		g.generateBundleVariableInstance(v.BottomLeft)
+		g.Builder.WriteString(",")
+
+		g.Builder.WriteString("bottomRight:")
+		g.generateBundleVariableInstance(v.BottomRight)
+		g.Builder.WriteString(")")
+
+	case string:
+		g.Builder.WriteString(dartStringLiteral(v))
+	case int64:
+		g.Builder.WriteString(fmt.Sprintf("%d", v))
+	case float64:
+		g.Builder.WriteString(fmt.Sprintf("%f", v))
+	case bool:
+		switch v {
+		case true:
+			g.Builder.WriteString("true")
+		case false:
+			g.Builder.WriteString("false")
+		}
 	default:
 		panic(fmt.Sprint("Unknown variable type ", v))
 	}
@@ -371,6 +537,10 @@ func dartField(name string) string {
 
 func dartType(name string) string {
 	return escapeDartKeywords(strcase.ToCamel(cleanName(name)))
+}
+
+func dartStringLiteral(name string) string {
+	return fmt.Sprintf("'%s'", name)
 }
 
 func cleanName(name string) string {

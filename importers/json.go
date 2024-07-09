@@ -205,14 +205,20 @@ func figmaToLetterSpacing(v float64, fontSize float64, unit interface{}) float64
 	}
 }
 
-func figmaToVariableType(t string) uipack.VariableType {
+func figmaToVariableType(t string) uipack.ValueType {
 	switch t {
 	case "color":
-		return uipack.ColorType
+		return uipack.ValueType{
+			Type: uipack.ColorType,
+		}
 	case "typography":
-		return uipack.TextStyleType
+		return uipack.ValueType{
+			Type: uipack.TextStyleType,
+		}
 	default:
-		return uipack.TextStyleType
+		return uipack.ValueType{
+			Type: uipack.TextStyleType,
+		}
 	}
 }
 

@@ -42,93 +42,221 @@ const (
 
 // Binary encoding
 
-func (o *Label) Encode(writer *bufio.Writer) {
-	writeUint32(writer, uint32(len(o.Segments)))
+func (o *Label) Encode(writer *bufio.Writer) error {
+	err := writeUint32(writer, uint32(len(o.Segments)))
+	if err != nil {
+		return err
+	}
 	for _, segment := range o.Segments {
-		segment.Encode(writer)
+		err = segment.Encode(writer)
+		if err != nil {
+			return err
+		}
 	}
-	writeUint32(writer, uint32(len(o.Variables)))
+	err = writeUint32(writer, uint32(len(o.Variables)))
+	if err != nil {
+		return err
+	}
 	for _, variable := range o.Variables {
-		variable.Encode(writer)
+		err = variable.Encode(writer)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (o *Label) Decode(reader *bufio.Reader) {
-	count := readUint32(reader)
+func (o *Label) Decode(reader *bufio.Reader) error {
+	count, err := readUint32(reader)
+	if err != nil {
+		return err
+	}
 	o.Segments = make([]LabelSegment, count)
 	for i := 0; i < int(count); i++ {
-		o.Segments[i].Decode(reader)
+		err = o.Segments[i].Decode(reader)
+		if err != nil {
+			return err
+		}
 	}
-	count = readUint32(reader)
+	count, err = readUint32(reader)
+	if err != nil {
+		return err
+	}
 	o.Variables = make([]LabelVariable, count)
 	for i := 0; i < int(count); i++ {
-		o.Variables[i].Decode(reader)
+		err = o.Variables[i].Decode(reader)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (o *LabelVariable) Encode(writer *bufio.Writer) {
-	writeUint8(writer, o.Id)
-	writeUint8(writer, uint8(o.VariableType))
+func (o *LabelVariable) Encode(writer *bufio.Writer) error {
+	err := writeUint8(writer, o.Id)
+	if err != nil {
+		return err
+	}
+	err = writeUint8(writer, uint8(o.VariableType))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (o *LabelVariable) Decode(reader *bufio.Reader) {
-	o.Id = readUint8(reader)
-	o.VariableType = LabelVariableType(readUint8(reader))
+func (o *LabelVariable) Decode(reader *bufio.Reader) error {
+	var err error
+	o.Id, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	t, err := readUint8(reader)
+	if err != nil {
+		return err
+	}
+	o.VariableType = LabelVariableType(t)
+	return nil
 }
 
-func (o *LabelSegment) Encode(writer *bufio.Writer) {
+func (o *LabelSegment) Encode(writer *bufio.Writer) error {
+	var err error
 	if o.Text != nil {
-		writeUint8(writer, 1)
-		writeString(writer, *o.Text)
+		err = writeUint8(writer, 1)
+		if err != nil {
+			return err
+		}
+		err = writeString(writer, *o.Text)
+		if err != nil {
+			return err
+		}
 	} else {
-		writeUint8(writer, 0)
+		err = writeUint8(writer, 0)
+		if err != nil {
+			return err
+		}
 	}
 	if o.Style != nil {
-		writeUint8(writer, 1)
-		writeUint8(writer, uint8(*o.Style))
+		err = writeUint8(writer, 1)
+		if err != nil {
+			return err
+		}
+		err = writeUint8(writer, uint8(*o.Style))
+		if err != nil {
+			return err
+		}
 	} else {
-		writeUint8(writer, 0)
+		err = writeUint8(writer, 0)
+		if err != nil {
+			return err
+		}
 	}
 	if o.Link != nil {
-		writeUint8(writer, 1)
-		writeString(writer, *o.Link)
+		err = writeUint8(writer, 1)
+		if err != nil {
+			return err
+		}
+		err = writeString(writer, *o.Link)
+		if err != nil {
+			return err
+		}
 	} else {
-		writeUint8(writer, 0)
+		err = writeUint8(writer, 0)
+		if err != nil {
+			return err
+		}
 	}
 	if o.Variable != nil {
-		writeUint8(writer, 1)
-		writeUint8(writer, *o.Variable)
+		err = writeUint8(writer, 1)
+		if err != nil {
+			return err
+		}
+		err = writeUint8(writer, *o.Variable)
+		if err != nil {
+			return err
+		}
 	} else {
-		writeUint8(writer, 0)
+		err = writeUint8(writer, 0)
+		if err != nil {
+			return err
+		}
 	}
 	if o.Child != nil {
-		writeUint8(writer, 1)
-		o.Child.Encode(writer)
+		err = writeUint8(writer, 1)
+		if err != nil {
+			return err
+		}
+		err = o.Child.Encode(writer)
+		if err != nil {
+			return err
+		}
 	} else {
-		writeUint8(writer, 0)
+		err = writeUint8(writer, 0)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
-func (o *LabelSegment) Decode(reader *bufio.Reader) {
-	if readUint8(reader) == 1 {
-		text := readString(reader)
+func (o *LabelSegment) Decode(reader *bufio.Reader) error {
+
+	t, err := readUint8(reader)
+	if err != nil {
+		return err
+	}
+	if t == 1 {
+		text, err := readString(reader)
+		if err != nil {
+			return err
+		}
 		o.Text = &text
 	}
-	if readUint8(reader) == 1 {
-		style := LabelStyle(readUint8(reader))
+
+	t, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	if t == 1 {
+		s, err := readUint8(reader)
+		if err != nil {
+			return err
+		}
+		style := LabelStyle(s)
 		o.Style = &style
 	}
-	if readUint8(reader) == 1 {
-		link := readString(reader)
+	t, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	if t == 1 {
+		link, err := readString(reader)
+		if err != nil {
+			return err
+		}
 		o.Link = &link
 	}
-	if readUint8(reader) == 1 {
-		variable := readUint8(reader)
+	t, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	if t == 1 {
+		variable, err := readUint8(reader)
+		if err != nil {
+			return err
+		}
 		o.Variable = &variable
 	}
-	if readUint8(reader) == 1 {
+	t, err = readUint8(reader)
+	if err != nil {
+		return err
+	}
+	if t == 1 {
 		child := Label{}
-		child.Decode(reader)
+		err = child.Decode(reader)
+		if err != nil {
+			return err
+		}
 		o.Child = &child
 	}
+	return nil
 }

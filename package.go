@@ -81,7 +81,7 @@ func (p *PackageEncoder) Load(path string) {
 							panic(err)
 						}
 						r := bufio.NewReader(file)
-						bundle.Decode(r, p.Value.Metadata)
+						bundle.Decode(r, &p.Value.Metadata)
 						file.Close()
 
 						bundles = append(bundles, bundle)
@@ -115,7 +115,7 @@ func (p *PackageEncoder) Save(path string, extension PackageExtension) {
 			panic(err)
 		}
 		w := bufio.NewWriter(file)
-		b.Encode(w)
+		b.Encode(w, &p.Value.Metadata)
 		w.Flush()
 		file.Close()
 	}

@@ -21,50 +21,105 @@ type RadialGradient struct {
 
 // Binary encoding
 
-func (o *GradientStop) Encode(writer *bufio.Writer) {
+func (o *GradientStop) Encode(writer *bufio.Writer) error {
 	writeFloat64(writer, o.Offset)
-	o.Color.Encode(writer)
+	return o.Color.Encode(writer)
 }
 
-func (o *GradientStop) Decode(reader *bufio.Reader) {
-	o.Offset = readFloat64(reader)
-	o.Color.Decode(reader)
-}
-
-func (o *LinearGradient) Encode(writer *bufio.Writer) {
-	writeUint32(writer, uint32(len(o.Stops)))
-	for _, stop := range o.Stops {
-		stop.Encode(writer)
+func (o *GradientStop) Decode(reader *bufio.Reader) error {
+	var err error
+	o.Offset, err = readFloat64(reader)
+	if err != nil {
+		return err
 	}
-	o.Begin.Encode(writer)
-	o.End.Encode(writer)
+	err = o.Color.Decode(reader)
+	return err
 }
 
-func (o *LinearGradient) Decode(reader *bufio.Reader) {
-	count := readUint32(reader)
+func (o *LinearGradient) Encode(writer *bufio.Writer) error {
+	err := writeUint32(writer, uint32(len(o.Stops)))
+	if err != nil {
+		return err
+	}
+	for _, stop := range o.Stops {
+		err = stop.Encode(writer)
+		if err != nil {
+			return err
+		}
+	}
+	err = o.Begin.Encode(writer)
+	if err != nil {
+		return err
+	}
+	err = o.End.Encode(writer)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *LinearGradient) Decode(reader *bufio.Reader) error {
+	count, err := readUint32(reader)
+	if err != nil {
+		return err
+	}
 	o.Stops = make([]GradientStop, count)
 	for i := 0; i < int(count); i++ {
-		o.Stops[i].Decode(reader)
+		err = o.Stops[i].Decode(reader)
+		if err != nil {
+			return err
+		}
 	}
-	o.Begin.Decode(reader)
-	o.End.Decode(reader)
+	err = o.Begin.Decode(reader)
+	if err != nil {
+		return err
+	}
+	err = o.End.Decode(reader)
+	return err
 }
 
-func (o *RadialGradient) Encode(writer *bufio.Writer) {
-	writeUint32(writer, uint32(len(o.Stops)))
+func (o *RadialGradient) Encode(writer *bufio.Writer) error {
+	err := writeUint32(writer, uint32(len(o.Stops)))
+	if err != nil {
+		return err
+	}
 	for _, stop := range o.Stops {
-		stop.Encode(writer)
+		err = stop.Encode(writer)
+		if err != nil {
+			return err
+		}
 	}
-	o.Center.Encode(writer)
-	writeFloat64(writer, o.Radius)
+	err = o.Center.Encode(writer)
+	if err != nil {
+		return err
+	}
+	err = writeFloat64(writer, o.Radius)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (o *RadialGradient) Decode(reader *bufio.Reader) {
-	count := readUint32(reader)
+func (o *RadialGradient) Decode(reader *bufio.Reader) error {
+	count, err := readUint32(reader)
+	if err != nil {
+		return err
+	}
 	o.Stops = make([]GradientStop, count)
 	for i := 0; i < int(count); i++ {
-		o.Stops[i].Decode(reader)
+		err = o.Stops[i].Decode(reader)
+		if err != nil {
+			return err
+		}
 	}
-	o.Center.Decode(reader)
-	o.Radius = readFloat64(reader)
+	err = o.Center.Decode(reader)
+	if err != nil {
+		return err
+	}
+
+	o.Radius, err = readFloat64(reader)
+	if err != nil {
+		return err
+	}
+	return nil
 }

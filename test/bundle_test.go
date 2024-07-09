@@ -33,12 +33,16 @@ func TestBundleEncodeDecode(t *testing.T) {
 			{
 				Identifier: 0,
 				Name:       "color",
-				Type:       uipack.ColorType,
+				Type: uipack.ValueType{
+					Type: uipack.ColorType,
+				},
 			},
 			{
 				Identifier: 1,
 				Name:       "text_style",
-				Type:       uipack.TextStyleType,
+				Type: uipack.ValueType{
+					Type: uipack.TextStyleType,
+				},
 			},
 		},
 	}
@@ -81,14 +85,14 @@ func TestBundleEncodeDecode(t *testing.T) {
 	buffer := bytes.NewBuffer(nil)
 	w := bufio.NewWriter(buffer)
 	writer := bufio.NewWriter(w)
-	input_bundle.Encode(writer)
+	input_bundle.Encode(writer, &metadata)
 	writer.Flush()
 
 	r := bytes.NewReader(buffer.Bytes())
 	reader := bufio.NewReader(r)
 
 	output_bundle := uipack.Bundle{}
-	output_bundle.Decode(reader, metadata)
+	output_bundle.Decode(reader, &metadata)
 
 	if output_bundle.Version != input_bundle.Version {
 		t.Error("Expected", input_bundle.Version, "got", output_bundle.Version)

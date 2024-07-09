@@ -1,6 +1,9 @@
 package uipack
 
-import "bufio"
+import (
+	"bufio"
+	"errors"
+)
 
 type Bundle struct {
 	Version Version
@@ -8,33 +11,60 @@ type Bundle struct {
 	Values  []interface{}
 }
 
-func (variant *Bundle) Decode(r *bufio.Reader, metadata BundleMetadata) {
-	protocol := readUint16(r)
-	if protocol != PROTOCOL_VERSION {
-		panic("Unsupported protocol version")
+func (variant *Bundle) Decode(r *bufio.Reader, metadata *BundleMetadata) error {
+	protocol, err := readUint16(r)
+	if err != nil {
+		return err
 	}
-	variant.Version.Decode(r)
-	variant.Variant = Variant(readUint64(r))
+	if protocol != PROTOCOL_VERSION {
+		return errors.New("unsupported protocol version")
+	}
+	err = variant.Version.Decode(r)
+	if err != nil {
+		return err
+	}
+	v, err := readUint64(r)
+	if err != nil {
+		return err
+	}
+	variant.Variant = Variant(v)
 	values := make([]interface{}, len(metadata.Variables))
 
 	for i, variable := range metadata.Variables {
-		values[i] = DecodeArgument(variable.Type, r)
+		values[i], err = metadata.DecodeArgument(variable.Type, r)
+		if err != nil {
+			return err
+		}
 	}
 
 	variant.Values = values
+	return nil
 }
 
-func (variant *Bundle) Encode(w *bufio.Writer) {
-	writeUint16(w, PROTOCOL_VERSION)
-	variant.Version.Encode((*bufio.Writer)(w))
-	writeUint64(w, uint64(variant.Variant))
-	for _, variable := range variant.Values {
-		EncodeArgument(w, variable)
+func (variant *Bundle) Encode(w *bufio.Writer, metadata *BundleMetadata) error {
+	err := writeUint16(w, PROTOCOL_VERSION)
+	if err != nil {
+		return err
 	}
+	err = variant.Version.Encode((*bufio.Writer)(w))
+	if err != nil {
+		return err
+	}
+	err = writeUint64(w, uint64(variant.Variant))
+	if err != nil {
+		return err
+	}
+	for _, variable := range variant.Values {
+		err = metadata.EncodeArgument(w, variable)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func DecodeArgument(t VariableType, r *bufio.Reader) interface{} {
-	switch VariableType(t) {
+func (metadata *BundleMetadata) DecodeArgument(t ValueType, r *bufio.Reader) (interface{}, error) {
+	switch MainValueType(t.Type) {
 	case IntegerType:
 		return readUint64(r)
 	case BooleanType:
@@ -45,72 +75,74 @@ func DecodeArgument(t VariableType, r *bufio.Reader) interface{} {
 		return readString(r)
 	case ColorType:
 		result := Color{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case TextStyleType:
 		result := TextStyle{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case LinearGradientType:
 		result := LinearGradient{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case RadialGradientType:
 		result := RadialGradient{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case LabelType:
 		result := Label{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case OffsetType:
 		result := Offset{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case RadiusType:
 		result := Radius{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r)
+		return result, err
 	case BorderRadiusType:
 		result := BorderRadius{}
-		result.Decode(r)
-		return result
-	case InstanceType:
+		err := result.Decode(r)
+		return result, err
+	case CustomType:
 		result := Instance{}
-		result.Decode(r)
-		return result
+		err := result.Decode(r, metadata)
+		return result, err
 	default:
-		panic("Unknown variable type")
+		return nil, errors.New("unknown type")
 	}
 }
 
-func EncodeArgument(w *bufio.Writer, data interface{}) {
+func (metadata *BundleMetadata) EncodeArgument(w *bufio.Writer, data interface{}) error {
 	switch v := data.(type) {
 	case Color:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case TextStyle:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case LinearGradient:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case RadialGradient:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case Label:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case Offset:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case Instance:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w, metadata)
 	case Radius:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case BorderRadius:
-		v.Encode((*bufio.Writer)(w))
+		return v.Encode(w)
 	case uint64:
-		writeUint64(w, v)
+		return writeUint64(w, v)
 	case bool:
-		writeBool(w, v)
+		return writeBool(w, v)
 	case float64:
-		writeFloat64(w, v)
+		return writeFloat64(w, v)
 	case string:
-		writeString(w, v)
+		return writeString(w, v)
 	}
+
+	return errors.New("unknown type")
 }

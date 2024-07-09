@@ -33,12 +33,16 @@ func TestMetadataEncodeDecode(t *testing.T) {
 			{
 				Identifier: 0,
 				Name:       "color",
-				Type:       uipack.ColorType,
+				Type: uipack.ValueType{
+					Type: uipack.ColorType,
+				},
 			},
 			{
 				Identifier: 1,
 				Name:       "text_style",
-				Type:       uipack.TextStyleType,
+				Type: uipack.ValueType{
+					Type: uipack.TextStyleType,
+				},
 			},
 		},
 	}
