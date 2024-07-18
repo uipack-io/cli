@@ -88,7 +88,7 @@ func (f *figmaExport) ToBundle(identifier uipack.Variant, variant map[string]str
 		mode := collection.FindMode(mn)
 		if mode != nil {
 			for _, variable := range mode.Variables {
-				result.Values = append(result.Values, f.resolveVariable(variant, &variable))
+				result.Values = append(result.Values, f.resolveVariable(collection.Name, variant, &variable))
 			}
 
 		}
@@ -105,9 +105,10 @@ func (f *figmaExport) FindCollection(name string) *figmaCollection {
 	return nil
 }
 
-func (f *figmaExport) resolveVariable(variant map[string]string, v *figmaVariable) interface{} {
+func (f *figmaExport) resolveVariable(currentCollection string, variant map[string]string, v *figmaVariable) interface{} {
 	if v.IsAlias {
-		alias := v.Alias()
+		alias := v.Alias(currentCollection)
+
 		acol := f.FindCollection(alias.Collection)
 		if acol != nil {
 			mn := variant[alias.Collection]
@@ -115,7 +116,7 @@ func (f *figmaExport) resolveVariable(variant map[string]string, v *figmaVariabl
 			if mode != nil {
 				variable := mode.FindVariable(alias.Name)
 				if variable != nil {
-					return f.resolveVariable(variant, variable)
+					return f.resolveVariable(currentCollection, variant, variable)
 				}
 
 				panic("Alias variable not found " + alias.Name)
@@ -178,6 +179,23 @@ func figmaToVariableValue(v *figmaVariable) interface{} {
 		default:
 			panic("typography should be a map")
 		}
+	case "number":
+		switch v := v.Value.(type) {
+		case int:
+			return float64(v)
+		case float64:
+			return float64(v)
+		default:
+			panic("number should be an int or a float")
+		}
+
+	case "string":
+		switch v := v.Value.(type) {
+		case string:
+			return v
+		default:
+			panic("string should be a string")
+		}
 	default:
 		panic("Unknown type " + v.Type)
 	}
@@ -214,6 +232,14 @@ func figmaToVariableType(t string) uipack.ValueType {
 	case "typography":
 		return uipack.ValueType{
 			Type: uipack.TextStyleType,
+		}
+	case "number":
+		return uipack.ValueType{
+			Type: uipack.FloatType,
+		}
+	case "string":
+		return uipack.ValueType{
+			Type: uipack.StringType,
 		}
 	default:
 		return uipack.ValueType{
@@ -287,13 +313,24 @@ type figmaAlias struct {
 	Name       string
 }
 
-func (v *figmaVariable) Alias() figmaAlias {
+func (v *figmaVariable) Alias(currentCollection string) figmaAlias {
 	if v.IsAlias {
 		switch v := v.Value.(type) {
 		case map[string]interface{}:
-			return figmaAlias{
-				Collection: v["collection"].(string),
-				Name:       v["name"].(string),
+			switch name := v["name"].(type) {
+			case string:
+				switch collection := v["collection"].(type) {
+				case string:
+					return figmaAlias{
+						Collection: collection,
+						Name:       name,
+					}
+				default:
+					return figmaAlias{
+						Collection: currentCollection,
+						Name:       name,
+					}
+				}
 			}
 		}
 	}

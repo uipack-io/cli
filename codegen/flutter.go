@@ -35,6 +35,7 @@ func (g *FlutterCodeGen) generateModeTypeDefinitions(metadata *uipack.BundleMeta
 		g.generateModeEnumDefinition(&mode)
 	}
 }
+
 func (g *FlutterCodeGen) generateModeEnumDefinition(mode *uipack.ModeMetadata) {
 	g.Builder.WriteString("/// Index : " + fmt.Sprintf("%x", mode.Identifier) + "\n")
 	g.Builder.WriteString("enum ")
@@ -112,7 +113,6 @@ func (g *FlutterCodeGen) generateVariantTypeDefinition(metadata *uipack.BundleMe
 }
 
 func (g *FlutterCodeGen) generateBundleExtension(metadata *uipack.BundleMetadata) {
-
 	g.Builder.WriteString("extension BundleExtension on Bundle {")
 
 	// Metadata
@@ -211,7 +211,7 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
 		  ),	
 		);`)
 	g.Builder.WriteString(`Offset offset() => Offset(float64(), float64());`)
-	g.Builder.WriteString(`Radius radius() => Radius.circular(float64(), float64());`)
+	g.Builder.WriteString(`Radius radius() => Radius.circular(float64());`)
 	g.Builder.WriteString(`BorderRadius borderRadius() => BorderRadius.only(
 		  topLeft: radius(),
 		  topRight: radius(),
@@ -251,7 +251,7 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
 		return ""
 	}
 
-	g.Builder.WriteString(`Object instance() {
+	g.Builder.WriteString(`Object instance() =>
 			switch(uint64()) {`)
 
 	for _, typedef := range metadata.Types {
@@ -259,18 +259,17 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
 		for _, v := range typedef.Properties {
 			g.Builder.WriteString(fmt.Sprintf("%s: %s,", dartField(v.Name), getMethod(v.Type)))
 		}
-		g.Builder.WriteString(");")
+		g.Builder.WriteString("),")
 	}
 	g.Builder.WriteString(`
-			_ => throw Exception('Unknown instance type');
-		  }
-		}`)
+			_ => throw Exception('Unknown instance type'),
+		};`)
 	g.Builder.WriteString("final values = <dynamic>[\n")
 	g.Builder.WriteString("uint64(), // Identifier\n")
 
 	for _, v := range metadata.Variables {
 		g.Builder.WriteString(getMethod(v.Type))
-		g.Builder.WriteString(fmt.Sprintf("//%s\n", v.Name))
+		g.Builder.WriteString(fmt.Sprintf(", //%s\n", v.Name))
 
 	}
 
@@ -303,7 +302,6 @@ func (g *FlutterCodeGen) generateBundleLoaderCollectionInstance(collection uipac
 }
 
 func (g *FlutterCodeGen) generateBundleVariableCollectionTypeDefinition(metadata *uipack.BundleMetadata, collection uipack.VariableCollection) {
-
 	for _, v := range collection.Variables {
 		g.generateBundleVariantVariableDefinition(metadata, &v)
 		g.Builder.WriteString(",\n")
@@ -317,7 +315,6 @@ func (g *FlutterCodeGen) generateBundleVariableCollectionTypeDefinition(metadata
 		g.Builder.WriteString(dartField(c.Name))
 		g.Builder.WriteString(",\n")
 	}
-
 }
 
 func generateDartType(metadata *uipack.BundleMetadata, t uipack.ValueType) string {
@@ -368,7 +365,6 @@ func (g *FlutterCodeGen) GenerateBundle(metadata *uipack.BundleMetadata, bundle 
 }
 
 func (g *FlutterCodeGen) generateBundleInstance(metadata *uipack.BundleMetadata, bundle *uipack.Bundle) {
-
 	g.Builder.WriteString("// Variant :")
 	for _, mode := range metadata.Modes {
 		g.Builder.WriteString(" ")
@@ -406,7 +402,6 @@ func (g *FlutterCodeGen) generateBundleVariableCollectionInstance(collection uip
 }
 
 func (g *FlutterCodeGen) generateBundleVariableInstance(v interface{}) {
-
 	generateGradientStops := func(stops []uipack.GradientStop) {
 		g.Builder.WriteString("colors: [")
 		for _, stop := range stops {
