@@ -1,4 +1,4 @@
-module aloisdeniel/uipack
+module github.com/uipack-io/cli
 
 go 1.22.2
 

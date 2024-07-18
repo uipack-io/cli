@@ -1,9 +1,10 @@
 package commands
 
 import (
-	"aloisdeniel/uipack"
 	"fmt"
 	"os"
+
+	uipack "github.com/uipack-io/cli"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/charmbracelet/lipgloss/table"

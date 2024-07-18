@@ -1,13 +1,14 @@
 package commands
 
 import (
-	"aloisdeniel/uipack"
-	"aloisdeniel/uipack/cmd/base"
-	"aloisdeniel/uipack/codegen"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	uipack "github.com/uipack-io/cli"
+	"github.com/uipack-io/cli/cmd/base"
+	"github.com/uipack-io/cli/codegen"
 )
 
 func FlutterCodeGen(output *string, p *uipack.Package) {

@@ -1,10 +1,11 @@
 package test
 
 import (
-	"aloisdeniel/uipack"
 	"bufio"
 	"bytes"
 	"testing"
+
+	uipack "github.com/uipack-io/cli"
 )
 
 func TestColorEncodeDecode(t *testing.T) {

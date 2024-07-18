@@ -1,10 +1,11 @@
 package importers
 
 import (
-	"aloisdeniel/uipack"
 	"encoding/json"
 	"strconv"
 	"strings"
+
+	uipack "github.com/uipack-io/cli"
 )
 
 // Support for variables exported with this plugin :

@@ -1,10 +1,11 @@
 package codegen
 
 import (
-	"aloisdeniel/uipack"
 	"fmt"
 	"regexp"
 	"strings"
+
+	uipack "github.com/uipack-io/cli"
 
 	"github.com/iancoleman/strcase"
 )

@@ -1,14 +1,15 @@
 package main
 
 import (
-	"aloisdeniel/uipack"
-	"aloisdeniel/uipack/cmd/base"
-	"aloisdeniel/uipack/cmd/commands"
-	"aloisdeniel/uipack/importers"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+
+	uipack "github.com/uipack-io/cli"
+	"github.com/uipack-io/cli/cmd/base"
+	"github.com/uipack-io/cli/cmd/commands"
+	"github.com/uipack-io/cli/importers"
 )
 
 func main() {
