@@ -3,6 +3,8 @@ package uipack
 import (
 	"bufio"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 // A color value.
@@ -15,6 +17,27 @@ var Black = Color{
 	Green: uint8(0),
 	Blue:  uint8(0),
 	Alpha: uint8(255),
+}
+
+func (color *Color) ParseHexString(v string) {
+	// Parsing '#RRGGBB' or '#RRGGBBAA'
+	v = strings.TrimPrefix(v, "#")
+	switch len(v) {
+	case 8:
+		values, _ := strconv.ParseUint(string(v), 16, 32)
+		color.Alpha = uint8(values & 0xFF)
+		color.Red = uint8((values >> 24) & 0xFF)
+		color.Green = uint8((values >> 16) & 0xFF)
+		color.Blue = uint8((values >> 8) & 0xFF)
+	case 6:
+		values, _ := strconv.ParseUint(string(v), 16, 24)
+		color.Alpha = 255
+		color.Red = uint8(values >> 16)
+		color.Green = uint8((values >> 8) & 0xFF)
+		color.Blue = uint8(values & 0xFF)
+	default:
+		panic("Invalid color format")
+	}
 }
 
 func (color *Color) ToHexString() string {

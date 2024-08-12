@@ -2,7 +2,6 @@ package importers
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
 
 	uipack "github.com/uipack-io/cli"
@@ -26,7 +25,6 @@ type figmaExport struct {
 }
 
 func (f *figmaExport) ToPackage(p *uipack.Package) {
-
 	p.Metadata = *f.ToBundleMetadata()
 
 	combinations := p.Metadata.GenerateModeCombinations()
@@ -91,7 +89,6 @@ func (f *figmaExport) ToBundle(identifier uipack.Variant, variant map[string]str
 			for _, variable := range mode.Variables {
 				result.Values = append(result.Values, f.resolveVariable(collection.Name, variant, &variable))
 			}
-
 		}
 	}
 	return &result
@@ -140,29 +137,9 @@ func figmaToVariableValue(v *figmaVariable) interface{} {
 	case "color":
 		switch v := v.Value.(type) {
 		case string:
-			// Parsing '#RRGGBB' or '#RRGGBBAA'
-			v = strings.TrimPrefix(v, "#")
-			switch len(v) {
-			case 8:
-				values, _ := strconv.ParseUint(string(v), 16, 32)
-				return uipack.Color{
-					Alpha: uint8(values),
-					Red:   uint8(values >> 24),
-					Green: uint8(values >> 16),
-					Blue:  uint8(values >> 8),
-				}
-			case 6:
-				values, _ := strconv.ParseUint(string(v), 16, 32)
-				return uipack.Color{
-					Alpha: 255,
-					Red:   uint8(values >> 16),
-					Green: uint8(values >> 8),
-					Blue:  uint8(values),
-				}
-			default:
-				panic("Invalid color format")
-			}
-
+			result := uipack.Color{}
+			result.ParseHexString(v)
+			return result
 		default:
 			panic("Unknown type")
 		}
