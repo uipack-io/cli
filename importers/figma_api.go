@@ -78,6 +78,23 @@ type figmaResponse struct {
 	Meta figmaMeta `json:"meta"`
 }
 
+func (f *figmaResponse) ToPackage(p *uipack.Package) {
+	p.Metadata = *f.ToBundleMetadata()
+
+	combinations := p.Metadata.GenerateModeCombinations()
+
+	for _, combination := range combinations {
+		vid := uipack.Variant(0)
+		variant := make(map[string]string)
+		for mi, mv := range combination {
+			mode := p.Metadata.Modes[mi]
+			variant[mode.Name] = mv.Name
+			vid = vid.SetMode(mode.Identifier, uipack.Uint4(mv.Identifier))
+		}
+		p.Bundles = append(p.Bundles, *f.ToBundle(vid, variant))
+	}
+}
+
 func (f *figmaResponse) ToBundleMetadata() *uipack.BundleMetadata {
 	result := uipack.BundleMetadata{
 		Name: "Figma",
@@ -115,5 +132,13 @@ func (f *figmaResponse) ToBundleMetadata() *uipack.BundleMetadata {
 
 		result.Modes = append(result.Modes, mm)
 	}
+	return &result
+}
+
+func (f *figmaResponse) ToBundle(identifier uipack.Variant, variant map[string]string) *uipack.Bundle {
+	result := uipack.Bundle{
+		Variant: identifier,
+	}
+	// TODO
 	return &result
 }
