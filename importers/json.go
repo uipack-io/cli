@@ -13,18 +13,18 @@ import (
 // -> https://www.figma.com/community/plugin/1253571037276959291/variables2json
 
 func DecodeJson(p *uipack.Package, jsn []byte) {
-	export := figmaExport{}
+	export := jsonExport{}
 	json.Unmarshal([]byte(jsn), &export)
 	export.ToPackage(p)
 }
 
 // Raw JSON structure from the Figma plugin
 
-type figmaExport struct {
-	Collections []figmaCollection `json:"collections"`
+type jsonExport struct {
+	Collections []jsonCollection `json:"collections"`
 }
 
-func (f *figmaExport) ToPackage(p *uipack.Package) {
+func (f *jsonExport) ToPackage(p *uipack.Package) {
 	p.Metadata = *f.ToBundleMetadata()
 
 	combinations := p.Metadata.GenerateModeCombinations()
@@ -41,7 +41,7 @@ func (f *figmaExport) ToPackage(p *uipack.Package) {
 	}
 }
 
-func (f *figmaExport) ToBundleMetadata() *uipack.BundleMetadata {
+func (f *jsonExport) ToBundleMetadata() *uipack.BundleMetadata {
 	result := uipack.BundleMetadata{
 		Name: "Figma",
 		Version: uipack.Version{
@@ -78,7 +78,7 @@ func (f *figmaExport) ToBundleMetadata() *uipack.BundleMetadata {
 	return &result
 }
 
-func (f *figmaExport) ToBundle(identifier uipack.Variant, variant map[string]string) *uipack.Bundle {
+func (f *jsonExport) ToBundle(identifier uipack.Variant, variant map[string]string) *uipack.Bundle {
 	result := uipack.Bundle{
 		Variant: identifier,
 	}
@@ -94,7 +94,7 @@ func (f *figmaExport) ToBundle(identifier uipack.Variant, variant map[string]str
 	return &result
 }
 
-func (f *figmaExport) FindCollection(name string) *figmaCollection {
+func (f *jsonExport) FindCollection(name string) *jsonCollection {
 	for _, collection := range f.Collections {
 		if collection.Name == name {
 			return &collection
@@ -103,7 +103,7 @@ func (f *figmaExport) FindCollection(name string) *figmaCollection {
 	return nil
 }
 
-func (f *figmaExport) resolveVariable(currentCollection string, variant map[string]string, v *figmaVariable) interface{} {
+func (f *jsonExport) resolveVariable(currentCollection string, variant map[string]string, v *jsonVariable) interface{} {
 	if v.IsAlias {
 		alias := v.Alias(currentCollection)
 
@@ -129,7 +129,7 @@ func (f *figmaExport) resolveVariable(currentCollection string, variant map[stri
 	return figmaToVariableValue(v)
 }
 
-func figmaToVariableValue(v *figmaVariable) interface{} {
+func figmaToVariableValue(v *jsonVariable) interface{} {
 	if v.IsAlias {
 		panic("Alias not resolved")
 	}
@@ -251,12 +251,12 @@ func figmaFontWeightToIndex(v string) uint8 {
 	}
 }
 
-type figmaCollection struct {
-	Name  string      `json:"name"`
-	Modes []figmaMode `json:"modes"`
+type jsonCollection struct {
+	Name  string     `json:"name"`
+	Modes []jsonMode `json:"modes"`
 }
 
-func (f *figmaCollection) FindMode(name string) *figmaMode {
+func (f *jsonCollection) FindMode(name string) *jsonMode {
 	for _, mode := range f.Modes {
 		if mode.Name == name {
 			return &mode
@@ -265,12 +265,12 @@ func (f *figmaCollection) FindMode(name string) *figmaMode {
 	return nil
 }
 
-type figmaMode struct {
-	Name      string          `json:"name"`
-	Variables []figmaVariable `json:"variables"`
+type jsonMode struct {
+	Name      string         `json:"name"`
+	Variables []jsonVariable `json:"variables"`
 }
 
-func (f *figmaMode) FindVariable(name string) *figmaVariable {
+func (f *jsonMode) FindVariable(name string) *jsonVariable {
 	for _, variable := range f.Variables {
 		if variable.Name == name {
 			return &variable
@@ -279,19 +279,19 @@ func (f *figmaMode) FindVariable(name string) *figmaVariable {
 	return nil
 }
 
-type figmaVariable struct {
+type jsonVariable struct {
 	Name    string      `json:"name"`
 	Type    string      `json:"type"`
 	IsAlias bool        `json:"isAlias"`
 	Value   interface{} `json:"value"`
 }
 
-type figmaAlias struct {
+type jsonAlias struct {
 	Collection string
 	Name       string
 }
 
-func (v *figmaVariable) Alias(currentCollection string) figmaAlias {
+func (v *jsonVariable) Alias(currentCollection string) jsonAlias {
 	if v.IsAlias {
 		switch v := v.Value.(type) {
 		case map[string]interface{}:
@@ -299,12 +299,12 @@ func (v *figmaVariable) Alias(currentCollection string) figmaAlias {
 			case string:
 				switch collection := v["collection"].(type) {
 				case string:
-					return figmaAlias{
+					return jsonAlias{
 						Collection: collection,
 						Name:       name,
 					}
 				default:
-					return figmaAlias{
+					return jsonAlias{
 						Collection: currentCollection,
 						Name:       name,
 					}
@@ -312,5 +312,5 @@ func (v *figmaVariable) Alias(currentCollection string) figmaAlias {
 			}
 		}
 	}
-	return figmaAlias{}
+	return jsonAlias{}
 }
