@@ -7,16 +7,26 @@ import (
 	"strings"
 )
 
+type ColorSpace uint8
+
+const (
+	SRGB = iota
+	ExtendedSRGB
+	DisplayP3
+)
+
 // A color value.
 type Color struct {
-	Red, Green, Blue, Alpha uint8
+	Red, Green, Blue, Alpha float64
+	ColorSpace              ColorSpace
 }
 
 var Black = Color{
-	Red:   uint8(0),
-	Green: uint8(0),
-	Blue:  uint8(0),
-	Alpha: uint8(255),
+	Red:        0.0,
+	Green:      0.0,
+	Blue:       0.0,
+	Alpha:      1.0,
+	ColorSpace: DisplayP3,
 }
 
 func (color *Color) ParseHexString(v string) {
@@ -25,37 +35,44 @@ func (color *Color) ParseHexString(v string) {
 	switch len(v) {
 	case 8:
 		values, _ := strconv.ParseUint(string(v), 16, 32)
-		color.Alpha = uint8(values & 0xFF)
-		color.Red = uint8((values >> 24) & 0xFF)
-		color.Green = uint8((values >> 16) & 0xFF)
-		color.Blue = uint8((values >> 8) & 0xFF)
+		color.Alpha = float64(uint8(values&0xFF)) / 255.0
+		color.Red = float64(uint8((values>>24)&0xFF)) / 255.0
+		color.Green = float64(uint8((values>>16)&0xFF)) / 255.0
+		color.Blue = float64(uint8((values>>8)&0xFF)) / 255.0
 	case 6:
 		values, _ := strconv.ParseUint(string(v), 16, 24)
-		color.Alpha = 255
-		color.Red = uint8(values >> 16)
-		color.Green = uint8((values >> 8) & 0xFF)
-		color.Blue = uint8(values & 0xFF)
+		color.Alpha = 1.0
+		color.Red = float64(uint8(values>>16)) / 255.0
+		color.Green = float64(uint8((values>>8)&0xFF)) / 255.0
+		color.Blue = float64(uint8(values&0xFF)) / 255.0
 	default:
 		panic("Invalid color format")
 	}
 }
 
 func (color *Color) ToHexString() string {
-	return fmt.Sprintf("%02x%02x%02x%02x", color.Alpha, color.Red, color.Green, color.Blue)
+	toBytes := func(v float64) byte {
+		return byte(uint32(v * 255.0))
+	}
+	return fmt.Sprintf("%02x%02x%02x%02x", toBytes(color.Alpha), toBytes(color.Red), toBytes(color.Green), toBytes(color.Blue))
 }
 
 // Binary encoding
 
 func (color *Color) Encode(writer *bufio.Writer) error {
-	err := writer.WriteByte(byte(color.Red))
+	err := writer.WriteByte(byte(color.ColorSpace))
 	if err != nil {
 		return err
 	}
-	err = writer.WriteByte(byte(color.Green))
+	err = writeFloat64(writer, color.Red)
 	if err != nil {
 		return err
 	}
-	err = writer.WriteByte(byte(color.Blue))
+	err = writeFloat64(writer, color.Green)
+	if err != nil {
+		return err
+	}
+	err = writeFloat64(writer, color.Blue)
 	if err != nil {
 		return err
 	}
@@ -68,20 +85,25 @@ func (color *Color) Encode(writer *bufio.Writer) error {
 }
 
 func (color *Color) Decode(reader *bufio.Reader) error {
-	var err error
-	color.Red, err = readUint8(reader)
+	spaceByte, err := reader.ReadByte()
 	if err != nil {
 		return err
 	}
-	color.Green, err = readUint8(reader)
+	color.ColorSpace = ColorSpace(spaceByte)
+
+	color.Red, err = readFloat64(reader)
 	if err != nil {
 		return err
 	}
-	color.Blue, err = readUint8(reader)
+	color.Green, err = readFloat64(reader)
 	if err != nil {
 		return err
 	}
-	color.Alpha, err = readUint8(reader)
+	color.Blue, err = readFloat64(reader)
+	if err != nil {
+		return err
+	}
+	color.Alpha, err = readFloat64(reader)
 	if err != nil {
 		return err
 	}

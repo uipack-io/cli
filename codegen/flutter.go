@@ -168,7 +168,18 @@ func (g *FlutterCodeGen) GenerateBundleLoader(metadata *uipack.BundleMetadata) s
         d.buffer.asUint8List(offset, l),
       );
     }`)
-	g.Builder.WriteString(`Color color() => Color(uint32());`)
+	g.Builder.WriteString(`Color color() => Color.from(
+      red: float64(),
+      green: float64(),
+      blue: float64(),
+      alpha: float64(),
+      colorSpace: switch (uint8()) {
+        0 => ColorSpace.sRGB,
+        1 => ColorSpace.extendedSRGB,
+        2 => ColorSpace.displayP3,
+        _ => ColorSpace.sRGB,
+      },
+    );`)
 	g.Builder.WriteString(`TextStyle textStyle() => TextStyle(
           fontFamily: string(),
           fontSize: float64(),
@@ -403,10 +414,29 @@ func (g *FlutterCodeGen) generateBundleVariableCollectionInstance(collection uip
 }
 
 func (g *FlutterCodeGen) generateBundleVariableInstance(v interface{}) {
+	generateColor := func(color uipack.Color) {
+		g.Builder.WriteString("Color.from(")
+		g.Builder.WriteString(fmt.Sprintf("red: %.4f,", color.Red))
+		g.Builder.WriteString(fmt.Sprintf("green: %.4f,", color.Green))
+		g.Builder.WriteString(fmt.Sprintf("blue: %.4f,", color.Blue))
+		g.Builder.WriteString(fmt.Sprintf("alpha: %.4f,", color.Alpha))
+		g.Builder.WriteString("colorSpace: ")
+		switch color.ColorSpace {
+		case uipack.SRGB:
+			g.Builder.WriteString("ColorSpace.sRGB")
+		case uipack.ExtendedSRGB:
+			g.Builder.WriteString("ColorSpace.extendedSRGB")
+		case uipack.DisplayP3:
+			g.Builder.WriteString("ColorSpace.displayP3")
+		default:
+			g.Builder.WriteString("ColorSpace.sRGB")
+		}
+		g.Builder.WriteString(",)")
+	}
 	generateGradientStops := func(stops []uipack.GradientStop) {
 		g.Builder.WriteString("colors: [")
 		for _, stop := range stops {
-			g.Builder.WriteString(fmt.Sprintf("Color(0x%s),", stop.Color.ToHexString()))
+			generateColor(stop.Color)
 		}
 		g.Builder.WriteString("],")
 		g.Builder.WriteString("stops: [")
@@ -418,7 +448,7 @@ func (g *FlutterCodeGen) generateBundleVariableInstance(v interface{}) {
 
 	switch v := v.(type) {
 	case uipack.Color:
-		g.Builder.WriteString(fmt.Sprintf("Color(0x%s)", v.ToHexString()))
+		generateColor(v)
 	case uipack.TextStyle:
 		fontFamily := v.FontFamily
 		if fontFamily == "SF Pro Display" {
