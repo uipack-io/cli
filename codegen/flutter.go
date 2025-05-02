@@ -15,7 +15,6 @@ type FlutterCodeGen struct {
 }
 
 func (g *FlutterCodeGen) GenerateDefinitions(metadata *uipack.BundleMetadata, bundles *[]uipack.Bundle) string {
-	g.Builder.WriteString("import 'dart:ui';\n\n")
 	g.Builder.WriteString("import 'package:flutter/widgets.dart';\n\n")
 
 	for _, bundle := range *bundles {
@@ -369,6 +368,7 @@ func (g *FlutterCodeGen) generateBundleVariantVariableDefinition(metadata *uipac
 
 func (g *FlutterCodeGen) GenerateBundle(metadata *uipack.BundleMetadata, bundle *uipack.Bundle) string {
 	g.Builder.WriteString("// ignore_for_file: prefer_const_constructors\n\n")
+	g.Builder.WriteString("import 'dart:ui';\n\n")
 	g.Builder.WriteString("import 'package:flutter/widgets.dart';\n\n")
 	g.Builder.WriteString("import 'data.g.dart';\n\n")
 
