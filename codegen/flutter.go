@@ -15,6 +15,7 @@ type FlutterCodeGen struct {
 }
 
 func (g *FlutterCodeGen) GenerateDefinitions(metadata *uipack.BundleMetadata, bundles *[]uipack.Bundle) string {
+	g.Builder.WriteString("import 'dart:ui';\n\n")
 	g.Builder.WriteString("import 'package:flutter/widgets.dart';\n\n")
 
 	for _, bundle := range *bundles {
