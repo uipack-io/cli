@@ -10,10 +10,10 @@ import (
 
 func TestColorEncodeDecode(t *testing.T) {
 	input_color := uipack.Color{
-		Red:   32,
-		Green: 64,
-		Blue:  128,
-		Alpha: 255,
+		Red:   0.5,
+		Green: 0.6,
+		Blue:  0.2,
+		Alpha: 1.0,
 	}
 
 	buffer := bytes.NewBuffer(nil)
