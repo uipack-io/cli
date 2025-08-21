@@ -76,7 +76,7 @@ func (color *Color) Encode(writer *bufio.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = writer.WriteByte(byte(color.Alpha))
+	err = writeFloat64(writer, color.Alpha)
 	if err != nil {
 		return err
 	}
