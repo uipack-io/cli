@@ -140,6 +140,15 @@ func figmaToVariableValue(v *jsonVariable) interface{} {
 			result := uipack.Color{}
 			result.ParseHexString(v)
 			return result
+		case map[string]interface{}:
+			return uipack.Color{
+				Red: v["r"].(float64),
+				Green:  v["g"].(float64),
+				Blue: v["b"].(float64),
+				Alpha: v["a"].(float64),
+	      ColorSpace: uipack.DisplayP3,
+			}
+			return result
 		default:
 			panic("Unknown type")
 		}
