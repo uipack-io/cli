@@ -1,0 +1,20 @@
+name: uipack_dart_cli
+description: A Dart CLI tool for uipack - UI package format
+version: 1.0.0
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  args: ^2.4.2
+  io: ^1.0.4
+  path: ^1.8.3
+  uipack:
+    path: ../uipack/
+
+dev_dependencies:
+  lints: ^3.0.0
+  test: ^1.24.0
+
+executables:
+  uipack: main
