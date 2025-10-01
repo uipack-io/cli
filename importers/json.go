@@ -148,7 +148,6 @@ func figmaToVariableValue(v *jsonVariable) interface{} {
 				Alpha: v["a"].(float64),
 	      ColorSpace: uipack.DisplayP3,
 			}
-			return result
 		default:
 			panic("Unknown type")
 		}
